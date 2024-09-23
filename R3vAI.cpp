@@ -1,117 +1,85 @@
 #include <iostream>
-#include <string>
-#include <algorithm>
 #include <unordered_map>
 #include <vector>
-#include <cstdlib>
+#include <string>
+#include <algorithm>
 #include <ctime>
-#include <limits>
 
-// Function to convert string to lowercase
-std::string toLowerCase(const std::string& input) {
-    std::string result = input;
-    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-    return result;
+// Function to convert a string to lowercase
+std::string toLowerCase(const std::string& str) {
+    std::string lowerStr = str;
+    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+    return lowerStr;
 }
 
-// Function to generate random response from a list of options
+// Function to fetch a random response from a list of possible responses
 std::string getRandomResponse(const std::vector<std::string>& responses) {
-    return responses[std::rand() % responses.size()];
+    if (responses.empty()) return "Sorry, I don't know how to respond to that.";
+    srand(static_cast<unsigned int>(time(0)));
+    int index = rand() % responses.size();
+    return responses[index];
 }
 
-// Function to calculate Levenshtein distance
-int levenshteinDistance(const std::string& a, const std::string& b) {
-    std::vector<std::vector<int>> dp(a.size() + 1, std::vector<int>(b.size() + 1));
-
-    for (int i = 0; i <= a.size(); ++i)
-        dp[i][0] = i;
-    for (int j = 0; j <= b.size(); ++j)
-        dp[0][j] = j;
-
-    for (int i = 1; i <= a.size(); ++i) {
-        for (int j = 1; j <= b.size(); ++j) {
-            if (a[i - 1] == b[j - 1])
-                dp[i][j] = dp[i - 1][j - 1];
-            else
-                dp[i][j] = std::min({dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + 1});
-        }
-    }
-    return dp[a.size()][b.size()];
-}
-
-// Function to find the closest match in the response map
-std::string findClosestMatch(const std::string& input, const std::unordered_map<std::string, std::vector<std::string>>& responseMap) {
-    int minDistance = std::numeric_limits<int>::max();
-    std::string closestMatch;
-
-    for (const auto& pair : responseMap) {
-        int distance = levenshteinDistance(input, pair.first);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestMatch = pair.first;
-        }
-    }
-
-    return (minDistance <= 2) ? closestMatch : "";  // Threshold for considering it a close match
-}
-
-// Function to generate a response based on input
-std::string generateResponse(const std::string& input, std::unordered_map<std::string, std::string>& memory) {
+// Function to generate a response based on the input and memory
+std::string generateResponse(const std::string& input, std::unordered_map<std::string, std::vector<std::string>>& memory) {
     std::unordered_map<std::string, std::vector<std::string>> dynamicResponseMap = {
-        {"hello", {"Hello! How can I assist you?", "Hi there! What's on your mind?", "Greetings! How may I help you today!"}},
-        {"hi", {"Hi! How can I help?", "Hello! What can I do for you?", "Hey! Need assistance?"}},
-        {"how are you", {"I'm just a program, but I'm doing great!", "I'm here and ready to help!", "All systems are functioning well!"}},
-        {"what can i say", {"You can say hello, hi, how are you, help, what is your name, exit, weather, joke, what can you do, test, make up a story, tell a poem, and more!"}},
-        {"joke", {"Why don't scientists trust atoms? Because they make up everything!", "Why did the computer go to therapy? It had too many bugs!", "Why was the math book sad? It had too many problems."}},
-        {"test", {"I am functional! Ready to go!", "All systems operational!", "I am running perfectly!"}},
-        {"what can you do", {"I can chat with you, generate stories, poems, jokes, and much more!", "I can assist you with conversations, stories, poems, and more!", "I'm here to help, generate random stories, poems, and jokes!"}}
+        {"hello", {"Hello! How can I assist you today?", "Hi there! What brings you here?", "Greetings! Ready to chat?"}},
+        {"hi", {"Hey there! What can I do for you?", "Hello! How's it going?", "Hi! Need any help?"}},
+        {"how are you", {"I'm just code, but I'd say I'm feeling 'optimal'!", "I'm great! Ready to help.", "All systems running smoothly. How about you?"}},
+        {"what is your name", {"I'm R3vAI, your virtual assistant with a personality!", "You can call me R3vAI, at your service.", "R3vAI is the name, helping is the game!"}},
+        {"weather", {"I can't check the real weather, but I bet it's a good day to chat!", "I'm not connected to weather services, but let's focus on our conversation!"}},
+        {"joke", {"Why don't robots ever get tired? Because they recharge!", "I told a joke once… but it ran out of memory.", "What do you call a computer that sings? A Dell!"}},
+        {"what can you do", {"I can chat, generate stories, tell jokes, and more! Give it a try.", "I'm here to help with conversations, questions, or random fun.", "Need advice? A joke? Or just want to chat? I'm your AI."}},
+        {"test", {"All systems are a-go!", "Testing complete. Everything's functional!", "I'm working perfectly, ready when you are!"}},
+        {"what can i say", {"Ask me about the weather, tell a joke, or chat! You can say things like: 'hi', 'how are you', 'weather', 'what can you do', and more."}},
+        {"why so specific", {"Details make a difference! That's why I'm precise.", "Being specific helps me give better responses!", "Precision is key to great conversation!"}},
+        {"r3vai reset", {"I'm here to chat, but resetting isn't something I can do. Maybe we can restart our conversation instead?"}},
+        {"good", {"nice!", "ok, well, being good isn't amazing", "I'm good as well!, well, as good as AI can be!"}},
+        {"amazing", {"Perfect, ya me 2"}},
+        {"bad", {"oh sorry to hear that"}},
+        {"ok", {"OK? just OK?"}},
+        {"how do you work", {"u wanna know? I'll run it down fo ya, if I don't have a response I'll tell ya, I have a lot of pre-generated messages, and I randomly choose them, then send them, that's a simple rundown!"}},
     };
 
-    // Check memory first
-    if (memory.find(input) != memory.end()) {
-        return memory[input];
+    // Check if the input matches any known phrases
+    std::string lowerInput = toLowerCase(input);
+    if (dynamicResponseMap.find(lowerInput) != dynamicResponseMap.end()) {
+        return getRandomResponse(dynamicResponseMap[lowerInput]);
     }
 
-    // Check for keyword in the input and return corresponding random response
-    std::string matchedKey = findClosestMatch(input, dynamicResponseMap);
-    if (!matchedKey.empty()) {
-        std::string response = getRandomResponse(dynamicResponseMap[matchedKey]);
-        memory[input] = response;  // Store response in memory
-        return response;
+    // Memory response for unknown inputs
+    if (memory.find(lowerInput) != memory.end()) {
+        return getRandomResponse(memory[lowerInput]);
     }
 
-    // Random response for unknown inputs
+    // If input isn't recognized
     std::vector<std::string> unknownResponses = {
         "I'm not sure about that. Can you ask something else?",
         "That's interesting! Let's talk about something else.",
         "I don't have the answer, but I'm here to listen."
     };
-
-    // Default response if no keyword is matched
     return getRandomResponse(unknownResponses);
 }
 
 int main() {
+    std::unordered_map<std::string, std::vector<std::string>> memory;
     std::string userInput;
-    std::unordered_map<std::string, std::string> memory;
-    std::cout << "R3vAI: Hello! I'm R3vAI. How can I assist you? Ask 'what can I say' to know what to ask!\n";
 
-    // Main chat loop
+    std::cout << "R3vAI: Hello! I'm R3vAI. How can I assist you? Ask 'what can I say' to know what to ask!" << std::endl;
+
     while (true) {
         std::cout << "You: ";
         std::getline(std::cin, userInput);
 
-        // Convert user input to lowercase for better matching
-        userInput = toLowerCase(userInput);
-
-        // Generate and output a response
-        std::string response = generateResponse(userInput, memory);
-        std::cout << "R3vAI: " << response << "\n";
-
-        // Exit condition
-        if (userInput == "exit") {
+        // Handle exit
+        if (toLowerCase(userInput) == "exit") {
+            std::cout << "R3vAI: Goodbye! Come back if you need more help!" << std::endl;
             break;
         }
+
+        // Generate a response
+        std::string response = generateResponse(userInput, memory);
+        std::cout << "R3vAI: " << response << std::endl;
     }
 
     return 0;
